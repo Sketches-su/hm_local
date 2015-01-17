@@ -1,12 +1,12 @@
 # hm_local - Nginx+Apache+PHP management script for local web development
 
-*Русскоязычное описание* [здесь](README_ru.md).
+**Русскоязычное описание** [здесь](README_ru.md).
 
 This script is what I use for managing my local virtual hosts. I don't recommend using it on production servers (by performance and security reasons).
 
-*Tip*: you can try this script in seconds without the need to install anything. Just clone the repo and copy `config.test` into `config`, and you're ready to go. Type `./hm_local add testhost.local` (no `sudo` needed here!), then look into `test/` directory to see what happened.
+**Tip**: you can try this script in seconds without the need to install anything. Just clone the repo and copy `config.test` into `config`, and you're ready to go. Type `./hm_local add testhost.local` (no `sudo` needed here!), then look into `test/` directory to see what happened.
 
-*Features:*
+**Features:**
 * Apache as the primary webserver.
 * (optional) nginx as front-end - actually not needed for local web development but added for easier integration with the existing nginx installation.
 * CGI support - helps working with very old websites (this happens...)
@@ -19,7 +19,7 @@ This script is what I use for managing my local virtual hosts. I don't recommend
 
 Here I describe the installation on a clean system. If you have nginx and/or Apache already installed, skip what you don't need.
 
-1. Install Apache (optionally, with `mpm-itk` module) and PHP. For example, on Debian or Ubuntu:
+Install Apache (optionally, with `mpm-itk` module) and PHP. For example, on Debian or Ubuntu:
 
 ```
 user@home:~$ sudo apt-get install apache2-common apache2-mpm-itk \
@@ -45,8 +45,6 @@ user@home:~$ sudo apt-get install nginx
 ```
 
 ...where `DISTRO` is a distribution (`debian` or `ubuntu`) and `CODENAME` is a distribution codename (see the right one [here](http://nginx.org/en/linux_packages.html)).
-
-2. Install the script as follows:
 
 Create a subdirectory for your virtual hosts.
 
@@ -79,9 +77,7 @@ Initialize the configuration files:
 
 ```
 user@home:~$ sudo touch /etc/apache2/sites-available/hm_local.conf
-user@home:~$ sudo ln -s /etc/apache2/sites-enabled/hm_local.conf /etc/apache2/sites-available/hm_local.conf
-# If you use nginx, also do that:
-user@home:~$ sudo touch /etc/nginx/conf.d/hm_local.conf
+user@home:~$ sudo a2ensite hm_local
 ```
 
 Now it's time to create your first virtual host:
