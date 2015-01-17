@@ -1,0 +1,216 @@
+#!/bin/bash
+
+hm_start()
+{
+    $APACHE_START_CMD
+    $NGINX_START_CMD
+}
+
+hm_stop()
+{
+    $NGINX_STOP_CMD
+    $APACHE_STOP_CMD
+    
+    # Let everything terminate
+    sleep 2
+}
+
+hm_recompile()
+{
+    cat "$NGINX_CONF_PREFIX" \
+        > "$NGINX_GLUED_CONFIGS"
+    cat "$APACHE_CONF_PREFIX" \
+        | sed -e "s|%%HM_VHOST_PATH%%|$HM_VHOST_PATH|g" \
+        > "$APACHE_GLUED_CONFIGS"
+    
+    for a in $HM_VHOST_PATH/*/conf; do
+        if [ ! -f "$a/disabled" ]; then
+            cat "$a/nginx.conf" >> "$NGINX_GLUED_CONFIGS"
+            cat "$a/apache2.conf" >> "$APACHE_GLUED_CONFIGS"
+        fi
+    done
+}
+
+hm_hosts_add()
+{
+    sed -i -e "/^127\.0\.0\.1/{s|$| $1|}" "$HM_HOSTS_FILE"
+}
+
+hm_hosts_del()
+{
+    sed -i -e "/^127\.0\.0\.1/{s| $1||}" "$HM_HOSTS_FILE"
+}
+
+# ============================================================================
+
+set -e
+hm_install_path="`readlink -f "$0"`"
+hm_install_path="`dirname "$hm_install_path"`"
+. "$hm_install_path/config"
+
+if [ "$HM_REQUIRES_ROOT" == "1" ]; then
+    if [ $(whoami) != "root" ]; then
+        echo "You must be root!"
+        exit 1
+    fi
+fi
+
+
+vhost="$2"
+
+case "$1" in
+    "add")
+        if [ "$vhost" == "" ]; then
+            echo "No host defined! Type 'hm_local help' to get help."
+            exit 2
+        fi
+        
+        if [ -d "$HM_VHOST_PATH/$vhost" ]; then
+            echo "Virtual host already exists!"
+            exit 3
+        fi
+        
+        aliases=""
+        
+        for a in . "$3" "$4" "$5" "$6" "$7" "$8" "$9"; do
+            if [ "$a" != "." ]; then
+                aliases+=" $a"
+            fi
+        done
+        
+        aliases="`echo -n "$aliases" | sed -r -e 's| +$||'`"
+        
+        if [ "$aliases" == "" ]; then
+            aliases=" www.$vhost"
+        fi
+        
+        mkdir "$HM_VHOST_PATH/$vhost"
+        mkdir "$HM_VHOST_PATH/$vhost/conf"
+        mkdir "$HM_VHOST_PATH/$vhost/htdocs"
+        mkdir "$HM_VHOST_PATH/$vhost/htdocs/www"
+        mkdir "$HM_VHOST_PATH/$vhost/htdocs/cgi-bin"
+        mkdir "$HM_VHOST_PATH/$vhost/logs"
+        mkdir "$HM_VHOST_PATH/$vhost/mail"
+        mkdir "$HM_VHOST_PATH/$vhost/tmp"
+        cat "$NGINX_CONF_TEMPLATE" \
+            | sed \
+            -e "s|%%NGINX_LISTEN_HOST%%|$NGINX_LISTEN_HOST|g" \
+            -e "s|%%NGINX_LISTEN_PORT%%|$NGINX_LISTEN_PORT|g" \
+            -e "s|%%HOST%%|$vhost|g" \
+            -e "s|%%ALIASES%%|$aliases|g" \
+            -e "s|%%HOSTDIR%%|$HM_VHOST_PATH/$vhost|g" \
+            -e "s|%%APACHE_LISTEN_HOST%%|$APACHE_LISTEN_HOST|g" \
+            -e "s|%%APACHE_LISTEN_PORT%%|$APACHE_LISTEN_PORT|g" \
+            -e "s|%%NGINX_ERRPAGE_PATH%%|$NGINX_ERRPAGE_PATH|g" \
+            > "$HM_VHOST_PATH/$vhost/conf/nginx.conf"
+        cat "$APACHE_CONF_TEMPLATE" \
+            | sed \
+            -e "s|%%HOST%%|$vhost|g" \
+            -e "s|%%ALIASES%%|$aliases|g" \
+            -e "s|%%HOSTDIR%%|$HM_VHOST_PATH/$vhost|g" \
+            -e "s|%%APACHE_LISTEN_HOST%%|$APACHE_LISTEN_HOST|g" \
+            -e "s|%%APACHE_LISTEN_PORT%%|$APACHE_LISTEN_PORT|g" \
+            -e "s|%%HM_USER%%|$HM_USER|g" \
+            -e "s|%%HM_GROUP%%|$HM_GROUP|g" \
+            -e "s|%%HM_EMAIL_FROM%%|$HM_EMAIL_FROM|g" \
+            > "$HM_VHOST_PATH/$vhost/conf/apache2.conf"
+        cat "$PHP_INI_TEMPLATE" \
+            | sed \
+            -e "s|%%HOSTDIR%%|$HM_VHOST_PATH/$vhost|g" \
+            -e "s|%%PHP_SENDMAIL_PATH%%|$HM_VHOST_PATH/$vhost/htdocs/cgi-bin/sendmail|g" \
+            -e "s|%%HM_EMAIL_FROM%%|$HM_EMAIL_FROM|g" \
+            > "$HM_VHOST_PATH/$vhost/conf/php.ini"
+        ln -s "$PHP_CGI_SYMLINK_TO" "$HM_VHOST_PATH/$vhost/htdocs/cgi-bin/php-cgi"
+        ln -s "$HM_VHOST_PATH/$vhost/conf/php.ini" "$HM_VHOST_PATH/$vhost/htdocs/cgi-bin/php.ini"
+        ln -s "$PHP_SENDMAIL_PATH" "$HM_VHOST_PATH/$vhost/htdocs/cgi-bin/sendmail"
+        echo "It works!" > "$HM_VHOST_PATH/$vhost/htdocs/www/index.html"
+        
+        if [ "$HM_REQUIRES_ROOT" == "1" ]; then
+            chown -R "$HM_USER:$HM_GROUP" "$HM_VHOST_PATH/$vhost"
+        fi
+        
+        if [ "$HM_PATCH_HOSTS" == "1" ]; then
+            hm_hosts_add "$vhost"
+            
+            for a in $aliases; do
+                hm_hosts_add "$a"
+            done
+        fi
+        
+        hm_stop
+        hm_recompile
+        hm_start
+        ;;
+    
+    "del")
+        if [ "$vhost" == "" ]; then
+            echo "No host defined! Type 'hm_local help' to get help."
+            exit 2
+        fi
+        
+        if [ ! -d "$HM_VHOST_PATH/$vhost" ]; then
+            echo "Virtual host does not exist!"
+            exit 3
+        fi
+        
+        if [ "$HM_PATCH_HOSTS" == "1" ]; then
+            hm_hosts_del "$vhost"
+            aliases=$(cat "$HM_VHOST_PATH/$vhost/conf/apache2.conf" | grep 'ServerAlias' | sed -e 's|ServerAlias||')
+            
+            for a in $aliases; do
+                hm_hosts_del "$a"
+            done
+        fi
+        
+        hm_stop
+        rm -rf "$HM_VHOST_PATH/$vhost"
+        hm_recompile
+        hm_start
+        ;;
+    
+    "en")
+        if [ "$vhost" == "" ]; then
+            echo "No host defined! Type 'hm_local help' to get help."
+            exit 2
+        fi
+        
+        if [ -f "$HM_VHOST_PATH/$vhost/conf/disabled" ]; then
+            rm "$HM_VHOST_PATH/$vhost/conf/disabled"
+            hm_stop
+            hm_recompile
+            hm_start
+        fi
+        ;;
+    
+    "dis")
+        if [ "$vhost" == "" ]; then
+            echo "No host defined! Type 'hm_local help' to get help."
+            exit 2
+        fi
+        
+        if [ ! -f "$HM_VHOST_PATH/$vhost/conf/disabled" ]; then
+            touch "$HM_VHOST_PATH/$vhost/conf/disabled"
+            hm_stop
+            hm_recompile
+            hm_start
+        fi
+        ;;
+    
+    "rec")
+        hm_stop
+        hm_recompile
+        hm_start
+        ;;
+    
+    *)
+        echo "Syntax: hm_local {add|del|en|dis} {hostname}"
+        echo
+        echo "For 'add' you may specify additional aliases (mirrors), e.g."
+        echo "    hm_local add example.local '*.example.local' alias.local"
+        echo "If no aliases specified, one 'www.'-prefixed alias is added"
+        echo
+        echo "Syntax: hm_local rec"
+        echo "        to force recombining configuration files and restarting"
+        echo "        web servers (after editing configs for example)"
+        ;;
+esac

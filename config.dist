@@ -1,0 +1,42 @@
+# do we need root to start/stop services?
+HM_REQUIRES_ROOT=1
+
+# do you use nginx?
+HM_USE_NGINX=1
+
+# do you want /etc/hosts to be auto-edited when adding/removing domains?
+HM_PATCH_HOSTS=1
+HM_HOSTS_FILE="/etc/hosts"
+
+# your local user and group
+HM_USER="user"
+HM_GROUP="$HM_USER"
+
+# path to your virtual hosts
+HM_VHOST_PATH="/home/$HM_USER/www"
+
+# fake e-mail address to send emails from
+HM_EMAIL_FROM="$HM_USER@`hostname -f`"
+
+# Everything below is pretty self-explanatory. See sources if in doubt.
+NGINX_START_CMD="service nginx start"
+NGINX_STOP_CMD="service nginx stop"
+NGINX_LISTEN_HOST=127.0.0.1
+NGINX_LISTEN_PORT=80
+NGINX_CONF_PREFIX="$hm_install_path/tpl/nginx_prefix.conf"
+NGINX_CONF_TEMPLATE="$hm_install_path/tpl/nginx.conf"
+NGINX_ERRPAGE_PATH="$hm_install_path/err"
+NGINX_GLUED_CONFIGS="/etc/nginx/conf.d/hm_local.conf"
+
+APACHE_START_CMD="service apache2 start"
+APACHE_STOP_CMD="service apache2 stop"
+APACHE_LISTEN_HOST=127.0.0.1
+APACHE_LISTEN_PORT=8080
+APACHE_CONF_PREFIX="$hm_install_path/tpl/apache2_prefix.conf"
+APACHE_CONF_TEMPLATE="$hm_install_path/tpl/apache2.conf"
+APACHE_GLUED_CONFIGS="/etc/apache2/sites-available/hm_local.conf"
+
+PHP_CGI_SYMLINK_TO="/usr/bin/php-cgi"
+PHP_INI_TEMPLATE="$hm_install_path/tpl/php.ini"
+PHP_SENDMAIL_PATH="$hm_install_path/fakemail.sh"
+

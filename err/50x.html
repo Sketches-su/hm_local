@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>50x Some Sort of an Internal Server Error</title>
+        <style type="text/css">
+        <!--
+        div {
+            margin: 15px 20px;
+            padding: 0 20px;
+            border: 4px solid #F88;
+        }
+        -->
+        </style>
+    </head>
+    <body>
+        <div>
+            <h1>50x Some Sort of an Internal Server Error</h1>
+            <p>Most frequent reasons:</p>
+            <ul>
+                <li>errors in <tt>.htaccess</tt> (typos, using disabled/missing Apache modules, etc.)</li>
+                <li>fatal errors in PHP scripts (exceeding <tt>memory_limit</tt>, running out of <tt>max_execution_time</tt>, etc.)</li>
+            </ul>
+            <p>In most cases this problem comes from the backend (Apache or PHP), not nginx.</p>
+            <p>Please look through <tt><em>/path/to/your/webhost</em>/logs/*-error.log</tt> to find what happened.</p>
+        </div>
+    </body>
+</html>
